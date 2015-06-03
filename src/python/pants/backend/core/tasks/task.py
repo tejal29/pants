@@ -399,11 +399,15 @@ class TaskBase(AbstractClass):
     """
     return self.do_check_artifact_cache(vts)
 
-  def do_check_artifact_cache(self, vts, post_process_cached_vts=None):
+  def do_check_artifact_cache(self, vts, post_process_cached_vts=None, invalid_vts_predicate=None):
     """Checks the artifact cache for the specified list of VersionedTargetSets.
 
     Returns a pair (cached, uncached) of VersionedTargets that were
     satisfied/unsatisfied from the cache.
+
+    invalid_vts_predicate is an additional predicate that selects invalid cache entries that were
+    successfully fetched but do not qualify the target as valid for some reason. This can be
+    used to implement additional checks that an entry was valid.
     """
     if not vts:
       return [], []
@@ -430,6 +434,16 @@ class TaskBase(AbstractClass):
     all_cached_vts, all_uncached_vts = flatten(cached_vts), flatten(uncached_vts)
     if post_process_cached_vts:
       post_process_cached_vts(all_cached_vts)
+
+    # Do one final filtering step to ensure that fetched artifacts are valid.
+    if invalid_vts_predicate:
+      # TODO: does ordering matter here?
+      for vt in list(all_cached_vts):
+        if invalid_vts_predicate(vt):
+          # The fetched artifact failed a final local check for validity.
+          all_uncached_vts.append(vt)
+          all_cached_vts.remove(vt)
+
     for vt in all_cached_vts:
       vt.update()
     return all_cached_vts, all_uncached_vts

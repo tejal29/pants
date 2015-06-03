@@ -6,6 +6,7 @@ from __future__ import (absolute_import, division, generators, nested_scopes, pr
                         unicode_literals, with_statement)
 
 import os
+import re
 from collections import defaultdict
 from contextlib import contextmanager
 
@@ -46,6 +47,8 @@ class JvmCompileIsolatedStrategy(JvmCompileStrategy):
 
     self._worker_count = worker_count
     self._worker_pool = None
+
+    self._stamp_pattern = re.compile('[0-9]+')
 
   def name(self):
     return 'isolated'
@@ -248,6 +251,28 @@ class JvmCompileIsolatedStrategy(JvmCompileStrategy):
           self._analysis_dir, compile_context.target)
       if os.path.exists(portable_analysis_file):
         self._analysis_tools.localize(portable_analysis_file, compile_context.analysis_file)
+
+  def invalid_vts_predicate(self, cached_vt):
+    # Confirm that the 'binary dep' stamps for this artifact match upstream products; otherwise,
+    # discard.
+    for target in cached_vt.targets:
+      cc = self.compile_context(target)
+      analysis = self._analysis_parser.parse_from_path(cc.analysis_file)._underlying_analysis
+      for classfile, stamps in analysis.stamps.binaries.items():
+        if len(stamps) != 1:
+          self.context.log.warn('Invalid stamps in artifact for {}: {}'.format(cached_vt, stamps))
+          return True
+        match = self._stamp_pattern.search(stamps[0])
+        if not match:
+          self.context.log.warn('Invalid stamps in artifact for {}: {}'.format(cached_vt, stamps))
+
+        # Comparable timestamps from the analysis and classfiles.
+        analysis_timestamp = int(match.group(0))
+        classfile_mtime_millis = 1000 * int(os.stat(classfile).st_mtime)
+        if True or analysis_timestamp != classfile_mtime_millis:
+          self.context.log.warn('Stamp mismatch in artifact for {}: rebuilding.'.format(cached_vt))
+          return True
+    return False
 
   def _write_to_artifact_cache(self, vts, compile_context, get_update_artifact_cache_work):
     assert len(vts.targets) == 1

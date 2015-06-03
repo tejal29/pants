@@ -423,6 +423,10 @@ class JvmCompileGlobalStrategy(JvmCompileStrategy):
         if os.path.exists(tmp_analysis):
           self.move(tmp_analysis, self._analysis_file)
 
+  def invalid_vts_predicate(self, cached_vt):
+    # TODO
+    return True
+
   def _write_to_artifact_cache(self, analysis_file, vts, get_update_artifact_cache_work):
     vt_by_target = dict([(vt.target, vt) for vt in vts.versioned_targets])
 

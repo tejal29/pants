@@ -121,6 +121,11 @@ class JvmCompileStrategy(object):
     pass
 
   @abstractmethod
+  def invalid_vts_predicate(self, cached_vt):
+    """A final check that should return True if a post-processed vts is valid."""
+    pass
+
+  @abstractmethod
   def compute_resource_mapping(self, compile_contexts):
     """Computes a merged ResourceMapping for the given compile contexts.
 

@@ -313,7 +313,10 @@ class JvmCompile(NailgunTaskBase, GroupMember):
 
   def check_artifact_cache(self, vts):
     post_process_cached_vts = lambda vts: self._strategy.post_process_cached_vts(vts)
-    return self.do_check_artifact_cache(vts, post_process_cached_vts=post_process_cached_vts)
+    invalid_vts_predicate = lambda vt: self._strategy.invalid_vts_predicate(vt)
+    return self.do_check_artifact_cache(vts,
+                                        post_process_cached_vts=post_process_cached_vts,
+                                        invalid_vts_predicate=invalid_vts_predicate)
 
   def _create_empty_products(self):
     make_products = lambda: defaultdict(MultipleRootedProducts)
